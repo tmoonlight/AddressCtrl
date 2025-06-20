@@ -49,6 +49,10 @@ private:
     void setupUI();
     void convertTextToPersonTag(const QString &text);
     void adjustTextEditHeight();
+    void processDocumentForTags();
+    QString getTextBeforeSemicolon(const QTextCursor &semicolonCursor);
+    void handleCustomCopy(); // 处理自定义复制功能
+    QString getSelectedTextWithTags(); // 获取包含标签的选中文本
     
     // UI组件
     QVBoxLayout *mainLayout;

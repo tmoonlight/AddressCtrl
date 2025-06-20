@@ -1,5 +1,10 @@
 ﻿#include "richtexteditorwidget.h"
 #include <QFontMetrics>
+#include <QRegularExpression>
+#include <QTextBlock>
+#include <QApplication>
+#include <QClipboard>
+#include <QMimeData>
 
 RichTextEditorWidget::RichTextEditorWidget(QWidget *parent)
     : QWidget(parent), minimumHeight(0), maximumHeight(300)
@@ -45,10 +50,10 @@ void RichTextEditorWidget::setupUI()
     textEdit->viewport()->setMouseTracking(true);
     textEdit->viewport()->installEventFilter(this);
       mainLayout->addWidget(textEdit);
-    
-    // 连接信号
+      // 连接信号
     connect(textEdit, &QTextEdit::textChanged, [this]() {
         clearAllTags();
+        processDocumentForTags(); // 扫描文档并处理分号
         emit textChanged();
     });
     
@@ -132,46 +137,16 @@ void RichTextEditorWidget::adjustTextEditHeight()
 // 事件过滤器
 bool RichTextEditorWidget::eventFilter(QObject *obj, QEvent *event)
 {
+    // 处理键盘事件
     if (obj == textEdit && event->type() == QEvent::KeyPress) {
         QKeyEvent *keyEvent = static_cast<QKeyEvent*>(event);
         
-        // 检查是否按下了分号键（支持全角和半角）
-        if (keyEvent->text() == ";" || keyEvent->text() == "；") {            QTextCursor cursor = textEdit->textCursor();
-            QTextBlock currentBlock = cursor.block();
-            QString blockText = currentBlock.text();
-            
-            // 找到光标位置在块中的位置
-            int positionInBlock = cursor.positionInBlock();
-            
-            // 查找最后一个标签或行开始的位置
-            int startPos = 0;
-            
-            // 遍历当前块，找到最后一个标签对象
-            QTextBlock::iterator it;
-            for (it = currentBlock.begin(); !it.atEnd(); ++it) {
-                QTextFragment fragment = it.fragment();
-                if (fragment.charFormat().objectType() == TagTextObject::TagTextFormat) {
-                    // 找到标签对象，更新起始位置到标签之后
-                    startPos = fragment.position() + fragment.length() - currentBlock.position();
-                }
-            }
-            
-            // 提取从最后一个标签到当前位置的文本
-            QString textToConvert = blockText.mid(startPos, positionInBlock - startPos).trimmed();
-            
-            if (!textToConvert.isEmpty()) {
-                // 删除要转换的文本
-                cursor.setPosition(currentBlock.position() + startPos);
-                cursor.setPosition(currentBlock.position() + positionInBlock, QTextCursor::KeepAnchor);
-                cursor.removeSelectedText();
-                
-                // 转换为人员标签
-                convertTextToPersonTag(textToConvert);
-                
-                // 阻止分号的输入
-                return true;
-            }
-        }    }
+        // 检查是否按下了Ctrl+C复制快捷键
+        if (keyEvent->matches(QKeySequence::Copy)) {
+            handleCustomCopy();
+            return true; // 阻止默认的复制行为
+        }
+    }
     
     // 处理鼠标移动事件
     if (event->type() == QEvent::MouseMove) {
@@ -252,4 +227,118 @@ int RichTextEditorWidget::getHoveredTagPosition(const QPoint &mousePos) const
 void RichTextEditorWidget::clearAllTags()
 {
     allTags.clear();
+}
+
+void RichTextEditorWidget::processDocumentForTags()
+{
+    QTextDocument *doc = textEdit->document();
+    QTextCursor cursor(doc);
+    
+    // 遍历整个文档查找分号
+    cursor.movePosition(QTextCursor::Start);
+    
+    while (!cursor.atEnd()) {        // 查找下一个分号（全角或半角）
+        QTextCursor semicolonCursor = doc->find(QRegularExpression("[;；]"), cursor);
+        
+        if (semicolonCursor.isNull()) {
+            break; // 没有找到更多分号
+        }
+        
+        // 获取分号前的文本
+        QString textBeforeSemicolon = getTextBeforeSemicolon(semicolonCursor);
+        
+        if (!textBeforeSemicolon.isEmpty()) {
+            // 删除分号前的文本和分号本身
+            QTextCursor deleteCursor = semicolonCursor;
+            deleteCursor.movePosition(QTextCursor::Left, QTextCursor::MoveAnchor, textBeforeSemicolon.length());
+            deleteCursor.movePosition(QTextCursor::Right, QTextCursor::KeepAnchor, textBeforeSemicolon.length() + 1); // +1 包含分号
+            
+            int deletePosition = deleteCursor.position() - deleteCursor.anchor();
+            deleteCursor.removeSelectedText();
+            
+            // 在删除位置插入标签
+            convertTextToPersonTag(textBeforeSemicolon);
+            
+            // 重新定位游标（因为文档已经被修改）
+            cursor.setPosition(deleteCursor.position());
+        } else {
+            // 如果分号前没有有效文本，跳过这个分号
+            cursor = semicolonCursor;
+            cursor.movePosition(QTextCursor::Right);
+        }
+    }
+}
+
+QString RichTextEditorWidget::getTextBeforeSemicolon(const QTextCursor &semicolonCursor)
+{
+    QTextCursor cursor = semicolonCursor;
+    QTextBlock currentBlock = cursor.block();
+    
+    // 获取分号在块中的位置
+    int semicolonPosInBlock = cursor.positionInBlock();
+    
+    // 查找最后一个标签或行开始的位置
+    int startPos = 0;
+    
+    // 遍历当前块，找到最后一个标签对象
+    QTextBlock::iterator it;
+    for (it = currentBlock.begin(); !it.atEnd(); ++it) {
+        QTextFragment fragment = it.fragment();
+        if (fragment.charFormat().objectType() == TagTextObject::TagTextFormat) {
+            int tagEndPosInBlock = fragment.position() + fragment.length() - currentBlock.position();
+            if (tagEndPosInBlock <= semicolonPosInBlock) {
+                startPos = tagEndPosInBlock;
+            }
+        }
+    }
+    
+    // 提取从最后一个标签到分号位置的文本
+    QString blockText = currentBlock.text();
+    QString textToConvert = blockText.mid(startPos, semicolonPosInBlock - startPos).trimmed();
+    
+    return textToConvert;
+}
+
+void RichTextEditorWidget::handleCustomCopy()
+{
+    QString selectedText = getSelectedTextWithTags();
+    if (!selectedText.isEmpty()) {
+        QClipboard *clipboard = QApplication::clipboard();
+        clipboard->setText(selectedText);
+    }
+}
+
+QString RichTextEditorWidget::getSelectedTextWithTags()
+{
+    QTextCursor cursor = textEdit->textCursor();
+    if (!cursor.hasSelection()) {
+        return QString();
+    }
+    
+    QString result;
+    int start = cursor.selectionStart();
+    int end = cursor.selectionEnd();
+    
+    // 遍历选中区域的所有字符
+    QTextCursor tempCursor(textEdit->document());
+    tempCursor.setPosition(start);
+    
+    while (tempCursor.position() < end) {
+        QTextCharFormat format = tempCursor.charFormat();
+        
+        if (format.objectType() == TagTextObject::TagTextFormat) {
+            // 这是一个标签对象，提取标签文本
+            QString tagText = format.property(TagTextObject::TagProperty).toString();
+            result += tagText;
+            
+            // 跳过这个对象字符
+            tempCursor.movePosition(QTextCursor::NextCharacter);
+        } else {
+            // 这是普通文本
+            result += tempCursor.document()->characterAt(tempCursor.position());
+            tempCursor.movePosition(QTextCursor::NextCharacter);
+        }
+    }
+    
+    return result;
 }
