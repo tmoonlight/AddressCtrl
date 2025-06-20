@@ -35,14 +35,14 @@ public:
 
 private slots:
     void onButtonClicked();
-    void onEditorTextChanged();
+    void onEditor1TextChanged();
+    void onEditor2TextChanged();
 
 private:
-    void setupUI();
-
-    QWidget *centralWidget;
+    void setupUI();    QWidget *centralWidget;
     QVBoxLayout *mainLayout;
     QHBoxLayout *buttonLayout;
+    QHBoxLayout *editorsLayout;  // 用于放置两个编辑器的水平布局
     
     QLabel *titleLabel;
     QLabel *infoLabel;
@@ -50,7 +50,8 @@ private:
     QPushButton *exitButton;
     
     // 使用富文本编辑器控件
-    RichTextEditorWidget *richTextEditor;
+    RichTextEditorWidget *richTextEditor1;
+    RichTextEditorWidget *richTextEditor2;
 };
 
 #endif // MAINWINDOW_H

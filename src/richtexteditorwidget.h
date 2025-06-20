@@ -3,16 +3,7 @@
 
 #include <QWidget>
 #include <QTextEdit>
-#include <QToolBar>
 #include <QVBoxLayout>
-#include <QHBoxLayout>
-#include <QLineEdit>
-#include <QPushButton>
-#include <QLabel>
-#include <QAction>
-#include <QFontComboBox>
-#include <QSpinBox>
-#include <QColorDialog>
 #include <QTextCharFormat>
 #include <QTextCursor>
 #include <QKeyEvent>
@@ -38,6 +29,10 @@ public:
     // 获取内部textEdit指针（如果需要直接访问）
     QTextEdit* getTextEdit() const;
     
+    // 高度调整设置
+    void setMaximumTextHeight(int maxHeight);
+    int getMaximumTextHeight() const;
+    
     // 标签管理接口（供TagTextObject回调使用）
     void updateTagRect(int position, const QRectF &rect, const QString &text);
     int getHoveredTagPosition(const QPoint &mousePos) const;
@@ -50,46 +45,24 @@ signals:
 protected:
     bool eventFilter(QObject *obj, QEvent *event) override;
 
-private slots:
-    void onAddTextClicked();
-    void onInputTextChanged();
-    void toggleBold();
-    void toggleItalic();
-    void toggleUnderline();
-    void changeFont();
-    void changeFontSize();
-    void changeTextColor();
-    void changeBackgroundColor();
-    void insertPersonTag();
-
 private:
     void setupUI();
-    void setupToolbar();
     void convertTextToPersonTag(const QString &text);
+    void adjustTextEditHeight();
     
     // UI组件
     QVBoxLayout *mainLayout;
-    QHBoxLayout *inputLayout;
-    QToolBar *toolbar;
-    QLineEdit *inputLineEdit;
-    QPushButton *addButton;
-    QPushButton *insertTagButton;
     QTextEdit *textEdit;
-    
-    // 工具栏控件
-    QAction *boldAction;
-    QAction *italicAction;
-    QAction *underlineAction;
-    QAction *colorAction;
-    QAction *backgroundColorAction;
-    QFontComboBox *fontComboBox;
-    QSpinBox *fontSizeSpinBox;
     
     // 标签文本对象
     TagTextObject *tagTextObject;
     
     // 标签管理
     QVector<TagInfo> allTags;  // 当前编辑器的所有标签信息
+    
+    // 自动高度调整
+    int minimumHeight;
+    int maximumHeight;
 };
 
 #endif // RICHTEXTEDITORWIDGET_H
