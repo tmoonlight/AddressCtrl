@@ -1,14 +1,35 @@
-# Qt CMake 项目
+# RichTextEditorWidget 演示项目
 
-这是一个使用CMake构建的Qt6应用程序示例。
+这是一个演示 `RichTextEditorWidget` 控件使用的Qt6应用程序。
 
 ## 功能特性
 
-- 现代化的Qt6 GUI界面
-- CMake构建系统
-- 跨平台支持（Windows、Linux、macOS）
-- 响应式UI设计
-- 文本输入和显示功能
+- **RichTextEditorWidget**: 自定义的富文本编辑器控件
+- **人员标签功能**: 输入文本后添加分号(;)自动转换为人员标签
+- **标签悬停效果**: 鼠标悬停时标签变色，鼠标指针变为手形
+- **多实例支持**: 支持在同一界面创建多个独立的编辑器实例
+- **自动高度调整**: 编辑器高度根据内容自动调整
+- **现代化UI**: 美观的界面设计和渐变色标签
+
+## 项目结构
+
+```
+src/
+├── main.cpp                    # 程序入口
+├── mainwindow.h               # 主窗口头文件
+├── mainwindow.cpp             # 主窗口实现，演示两个RichTextEditorWidget实例
+├── richtexteditorwidget.h     # 富文本编辑器控件头文件
+├── richtexteditorwidget.cpp   # 富文本编辑器控件实现
+├── tagtextobject.h           # 人员标签对象头文件
+└── tagtextobject.cpp         # 人员标签对象实现
+```
+
+## 使用方法
+
+1. 在文本编辑器中输入文字
+2. 在需要转换为人员标签的文字后面输入分号(;)
+3. 文字会自动转换为带有渐变背景的人员标签
+4. 将鼠标悬停在标签上可以看到颜色变化和手形指针
 
 ## 系统要求
 

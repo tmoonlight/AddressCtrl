@@ -1,4 +1,4 @@
-#include "richtexteditorwidget.h"
+﻿#include "richtexteditorwidget.h"
 #include <QFontMetrics>
 
 RichTextEditorWidget::RichTextEditorWidget(QWidget *parent)

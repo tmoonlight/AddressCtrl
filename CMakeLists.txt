@@ -30,8 +30,6 @@ set(SOURCES
     src/main.cpp
     src/mainwindow.cpp
     src/mainwindow.h
-    src/mainwindow.ui
-    src/addresseditwidget.cpp
     src/tagtextobject.cpp
     src/tagtextobject.h
     src/richtexteditorwidget.cpp
