@@ -34,6 +34,8 @@ set(SOURCES
     src/addresseditwidget.cpp
     src/tagtextobject.cpp
     src/tagtextobject.h
+    src/richtexteditorwidget.cpp
+    src/richtexteditorwidget.h
 )
 
 # 创建可执行文件
