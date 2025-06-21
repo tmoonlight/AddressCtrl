@@ -20,9 +20,8 @@ QSizeF TagTextObject::intrinsicSize(QTextDocument *doc, int posInDocument,
     QString text = format.property(TagProperty).toString();
     QFont font = QApplication::font();
     font.setPointSize(10);
-    QFontMetrics fm(font);
-      // 计算文本尺寸，添加一些内边距
-    int width = fm.horizontalAdvance(text) + 20 + 6; // 左右各10像素内边距 + 左右各3像素留白
+    QFontMetrics fm(font);    // 计算文本尺寸，添加一些内边距和删除按钮的空间
+    int width = fm.horizontalAdvance(text) + 20 + 6 + 16; // 左右各10像素内边距 + 左右各3像素留白 + 16像素删除按钮
     int height = fm.height() + 8; // 上下各4像素内边距
     
     return QSizeF(width, height);
@@ -43,9 +42,20 @@ void TagTextObject::drawObject(QPainter *painter, const QRectF &rect,
     painter->save();
       // 设置抗锯齿
     painter->setRenderHint(QPainter::Antialiasing);
-    
-    // 调整绘制区域，留出左右3像素的空白
+      // 调整绘制区域，留出左右3像素的空白
     QRectF drawRect = rect.adjusted(3, 0, -3, 0);
+    
+    // 计算删除按钮区域（右侧）
+    int deleteButtonSize = 14;
+    QRectF deleteButtonRect = QRectF(
+        drawRect.right() - deleteButtonSize - 4, 
+        drawRect.top() + (drawRect.height() - deleteButtonSize) / 2,
+        deleteButtonSize, 
+        deleteButtonSize
+    );
+    
+    // 调整文本绘制区域，为删除按钮留出空间
+    QRectF textRect = drawRect.adjusted(0, 0, -deleteButtonSize - 6, 0);
     
     // 绘制圆角矩形背景
     QPainterPath path;
@@ -72,8 +82,7 @@ void TagTextObject::drawObject(QPainter *painter, const QRectF &rect,
     // 绘制边框
     painter->setPen(QPen(QColor(70, 130, 180), 1));
     painter->drawPath(path);
-    
-    // 绘制文本
+      // 绘制文本
     painter->setPen(QColor(255, 255, 255)); // 白色文字
     QFont font = QApplication::font();
     font.setPointSize(10);
@@ -82,7 +91,26 @@ void TagTextObject::drawObject(QPainter *painter, const QRectF &rect,
     
     QTextOption option;
     option.setAlignment(Qt::AlignCenter);
-    painter->drawText(drawRect, text, option);
+    painter->drawText(textRect, text, option);
+    
+    // 绘制删除按钮
+    painter->setPen(QPen(QColor(255, 255, 255), 1.5));
+    int crossSize = 6;
+    QPointF center = deleteButtonRect.center();
+    // 绘制 X 形状的删除图标
+    painter->drawLine(
+        center.x() - crossSize/2, center.y() - crossSize/2,
+        center.x() + crossSize/2, center.y() + crossSize/2
+    );
+    painter->drawLine(
+        center.x() - crossSize/2, center.y() + crossSize/2,
+        center.x() + crossSize/2, center.y() - crossSize/2
+    );
+    
+    // 通过管理器更新删除按钮区域
+    if (tagManager) {
+        tagManager->updateTagDeleteButtonRect(posInDocument, deleteButtonRect);
+    }
       painter->restore();
 }
 

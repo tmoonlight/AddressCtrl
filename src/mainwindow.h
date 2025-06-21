@@ -37,16 +37,17 @@ private slots:
     void onButtonClicked();
     void onEditor1TextChanged();
     void onEditor2TextChanged();
+    void showCompleteText(); // 新增：显示完整文本内容
 
 private:
     void setupUI();    QWidget *centralWidget;
     QVBoxLayout *mainLayout;
     QHBoxLayout *buttonLayout;
     QHBoxLayout *editorsLayout;  // 用于放置两个编辑器的水平布局
-    
-    QLabel *titleLabel;
+      QLabel *titleLabel;
     QLabel *infoLabel;
     QPushButton *clearButton;
+    QPushButton *showTextButton; // 新增：显示完整文本按钮
     QPushButton *exitButton;
     
     // 使用富文本编辑器控件

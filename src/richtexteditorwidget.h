@@ -18,10 +18,10 @@ class RichTextEditorWidget : public QWidget
 public:
     explicit RichTextEditorWidget(QWidget *parent = nullptr);
     ~RichTextEditorWidget();
-    
-    // 公共接口
+      // 公共接口
     QString getPlainText() const;
     QString getHtmlText() const;
+    QString getCompleteText() const; // 新增：获取包含标签内容的完整文本
     void setPlainText(const QString &text);
     void setHtmlText(const QString &html);
     void clear();
@@ -32,15 +32,18 @@ public:
     // 高度调整设置
     void setMaximumTextHeight(int maxHeight);
     int getMaximumTextHeight() const;
-    
-    // 标签管理接口（供TagTextObject回调使用）
+      // 标签管理接口（供TagTextObject回调使用）
     void updateTagRect(int position, const QRectF &rect, const QString &text);
+    void updateTagDeleteButtonRect(int position, const QRectF &deleteRect);
     int getHoveredTagPosition(const QPoint &mousePos) const;
+    bool isPointOnDeleteButton(const QPoint &mousePos) const;
+    void deleteTagAtPosition(int position);
     void clearAllTags();
 
 signals:
     void textChanged();
     void tagInserted(const QString &tagText);
+    void tagDeleted(int position);
 
 protected:
     bool eventFilter(QObject *obj, QEvent *event) override;
@@ -48,11 +51,9 @@ protected:
 private:
     void setupUI();
     void convertTextToPersonTag(const QString &text);
+    void processDocumentForTags(); // 新增：扫描文档并处理分号转换标签
+    QString getTextBeforeSemicolon(const QTextCursor &semicolonCursor); // 新增：获取分号前的文本
     void adjustTextEditHeight();
-    void processDocumentForTags();
-    QString getTextBeforeSemicolon(const QTextCursor &semicolonCursor);
-    void handleCustomCopy(); // 处理自定义复制功能
-    QString getSelectedTextWithTags(); // 获取包含标签的选中文本
     
     // UI组件
     QVBoxLayout *mainLayout;

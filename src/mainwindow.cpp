@@ -58,24 +58,27 @@ void MainWindow::setupUI()
     
     // 创建按钮布局
     buttonLayout = new QHBoxLayout();
-    
-    clearButton = new QPushButton("清空内容", this);
+      clearButton = new QPushButton("清空内容", this);
     clearButton->setStyleSheet("QPushButton { background-color: #e74c3c; color: white; padding: 8px 16px; border-radius: 4px; }");
+    
+    showTextButton = new QPushButton("显示完整文本", this);
+    showTextButton->setStyleSheet("QPushButton { background-color: #3498db; color: white; padding: 8px 16px; border-radius: 4px; }");
     
     exitButton = new QPushButton("退出", this);
     exitButton->setStyleSheet("QPushButton { background-color: #95a5a6; color: white; padding: 8px 16px; border-radius: 4px; }");
     
     buttonLayout->addStretch();
     buttonLayout->addWidget(clearButton);
+    buttonLayout->addWidget(showTextButton);
     buttonLayout->addWidget(exitButton);
       // 添加到主布局
     mainLayout->addWidget(titleLabel);
     mainLayout->addWidget(infoLabel);
     mainLayout->addLayout(editorsLayout);
     mainLayout->addLayout(buttonLayout);
-    
-    // 连接信号和槽
+      // 连接信号和槽
     connect(clearButton, &QPushButton::clicked, this, &MainWindow::onButtonClicked);
+    connect(showTextButton, &QPushButton::clicked, this, &MainWindow::showCompleteText);
     connect(exitButton, &QPushButton::clicked, QApplication::instance(), &QApplication::quit);
     connect(richTextEditor1, &RichTextEditorWidget::textChanged, this, &MainWindow::onEditor1TextChanged);
     connect(richTextEditor2, &RichTextEditorWidget::textChanged, this, &MainWindow::onEditor2TextChanged);
@@ -99,4 +102,16 @@ void MainWindow::onEditor1TextChanged()
 void MainWindow::onEditor2TextChanged()
 {
     // 可以在这里添加编辑器2文本变化的处理逻辑
+}
+
+void MainWindow::showCompleteText()
+{
+    QString completeText1 = richTextEditor1->getCompleteText();
+    QString completeText2 = richTextEditor2->getCompleteText();
+    
+    QString message = QString("编辑器1的完整文本:\n%1\n\n编辑器2的完整文本:\n%2")
+                      .arg(completeText1.isEmpty() ? "(空)" : completeText1)
+                      .arg(completeText2.isEmpty() ? "(空)" : completeText2);
+    
+    QMessageBox::information(this, "完整文本内容", message);
 }

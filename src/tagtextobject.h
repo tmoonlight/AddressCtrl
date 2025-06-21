@@ -9,12 +9,13 @@
 #include <QRectF>
 #include <QVector>
 
-// ??????
+// 标签信息结构
 struct TagInfo {
-    QRectF rect;        // ????
-    int position;       // ???????
-    QString text;       // ????
-    bool isHovered;     // ??????
+    QRectF rect;        // 标签矩形
+    QRectF deleteRect;  // 删除按钮矩形
+    int position;       // 标签在文档中的位置
+    QString text;       // 标签文本
+    bool isHovered;     // 是否被悬停
     
     TagInfo() : position(-1), isHovered(false) {}
     TagInfo(const QRectF &r, int pos, const QString &t) 

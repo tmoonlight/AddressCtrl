@@ -2,9 +2,6 @@
 #include <QFontMetrics>
 #include <QRegularExpression>
 #include <QTextBlock>
-#include <QApplication>
-#include <QClipboard>
-#include <QMimeData>
 
 RichTextEditorWidget::RichTextEditorWidget(QWidget *parent)
     : QWidget(parent), minimumHeight(0), maximumHeight(300)
@@ -76,6 +73,40 @@ QString RichTextEditorWidget::getHtmlText() const
     return textEdit->toHtml();
 }
 
+QString RichTextEditorWidget::getCompleteText() const
+{
+    QString completeText;
+    QTextDocument *doc = textEdit->document();
+    
+    // 遍历整个文档的所有块
+    QTextBlock block = doc->begin();
+    while (block.isValid()) {
+        // 遍历块中的所有片段
+        QTextBlock::iterator it;
+        for (it = block.begin(); !it.atEnd(); ++it) {
+            QTextFragment fragment = it.fragment();
+            
+            // 检查是否是标签对象
+            if (fragment.charFormat().objectType() == TagTextObject::TagTextFormat) {
+                // 获取标签的文本内容
+                QString tagText = fragment.charFormat().property(TagTextObject::TagProperty).toString();
+                completeText += tagText;
+            } else {
+                // 普通文本片段
+                completeText += fragment.text();
+            }
+        }
+        
+        // 如果不是最后一个块，添加换行符
+        block = block.next();
+        if (block.isValid()) {
+            completeText += "\n";
+        }
+    }
+    
+    return completeText;
+}
+
 void RichTextEditorWidget::setPlainText(const QString &text)
 {
     textEdit->setPlainText(text);
@@ -137,14 +168,20 @@ void RichTextEditorWidget::adjustTextEditHeight()
 // 事件过滤器
 bool RichTextEditorWidget::eventFilter(QObject *obj, QEvent *event)
 {
-    // 处理键盘事件
-    if (obj == textEdit && event->type() == QEvent::KeyPress) {
-        QKeyEvent *keyEvent = static_cast<QKeyEvent*>(event);
+    // 处理鼠标点击事件
+    if (event->type() == QEvent::MouseButtonPress) {
+        QMouseEvent *mouseEvent = static_cast<QMouseEvent*>(event);
         
-        // 检查是否按下了Ctrl+C复制快捷键
-        if (keyEvent->matches(QKeySequence::Copy)) {
-            handleCustomCopy();
-            return true; // 阻止默认的复制行为
+        if (obj == textEdit->viewport() && mouseEvent->button() == Qt::LeftButton) {
+            QPoint viewportPos = mouseEvent->pos();
+            
+            // 检查是否点击了删除按钮
+            for (const auto &tag : allTags) {
+                if (tag.deleteRect.contains(viewportPos)) {
+                    deleteTagAtPosition(tag.position);
+                    return true; // 阻止事件传播
+                }
+            }
         }
     }
     
@@ -156,12 +193,15 @@ bool RichTextEditorWidget::eventFilter(QObject *obj, QEvent *event)
         if (obj == textEdit->viewport()) {
             QPoint viewportPos = mouseEvent->pos();
             tagTextObject->setCurrentMousePos(viewportPos);
-            
-            // 使用精确的矩形检测来判断是否悬停在TagTextObject上
+              // 使用精确的矩形检测来判断是否悬停在TagTextObject上
             int hoveredTagPosition = getHoveredTagPosition(viewportPos);
             bool isOnTag = (hoveredTagPosition != -1);
+            bool isOnDeleteButton = isPointOnDeleteButton(viewportPos);
             
-            if (isOnTag) {
+            if (isOnDeleteButton) {
+                // 鼠标在删除按钮上，设置为箭头指针
+                textEdit->viewport()->setCursor(Qt::ArrowCursor);
+            } else if (isOnTag) {
                 // 鼠标在标签上，设置为手形指针
                 textEdit->viewport()->setCursor(Qt::PointingHandCursor);
             } else {
@@ -214,6 +254,17 @@ void RichTextEditorWidget::updateTagRect(int position, const QRectF &rect, const
     allTags.append(TagInfo(rect, position, text));
 }
 
+void RichTextEditorWidget::updateTagDeleteButtonRect(int position, const QRectF &deleteRect)
+{
+    // 更新对应标签的删除按钮矩形
+    for (auto &tag : allTags) {
+        if (tag.position == position) {
+            tag.deleteRect = deleteRect;
+            return;
+        }
+    }
+}
+
 int RichTextEditorWidget::getHoveredTagPosition(const QPoint &mousePos) const
 {
     for (const auto &tag : allTags) {
@@ -227,6 +278,43 @@ int RichTextEditorWidget::getHoveredTagPosition(const QPoint &mousePos) const
 void RichTextEditorWidget::clearAllTags()
 {
     allTags.clear();
+}
+
+bool RichTextEditorWidget::isPointOnDeleteButton(const QPoint &mousePos) const
+{
+    for (const auto &tag : allTags) {
+        if (tag.deleteRect.contains(mousePos)) {
+            return true;
+        }
+    }
+    return false;
+}
+
+void RichTextEditorWidget::deleteTagAtPosition(int position)
+{
+    // 在文档中找到并删除对应的标签
+    QTextCursor cursor(textEdit->document());
+    cursor.setPosition(position);
+    
+    // 查找标签对象
+    QTextCharFormat format = cursor.charFormat();
+    if (format.objectType() == TagTextObject::TagTextFormat) {
+        // 删除标签字符
+        cursor.setPosition(position);
+        cursor.setPosition(position + 1, QTextCursor::KeepAnchor);
+        cursor.removeSelectedText();
+        
+        // 从标签列表中移除
+        for (int i = 0; i < allTags.size(); ++i) {
+            if (allTags[i].position == position) {
+                allTags.removeAt(i);
+                break;
+            }
+        }
+        
+        // 发送标签删除信号
+        emit tagDeleted(position);
+    }
 }
 
 void RichTextEditorWidget::processDocumentForTags()
@@ -297,48 +385,4 @@ QString RichTextEditorWidget::getTextBeforeSemicolon(const QTextCursor &semicolo
     QString textToConvert = blockText.mid(startPos, semicolonPosInBlock - startPos).trimmed();
     
     return textToConvert;
-}
-
-void RichTextEditorWidget::handleCustomCopy()
-{
-    QString selectedText = getSelectedTextWithTags();
-    if (!selectedText.isEmpty()) {
-        QClipboard *clipboard = QApplication::clipboard();
-        clipboard->setText(selectedText);
-    }
-}
-
-QString RichTextEditorWidget::getSelectedTextWithTags()
-{
-    QTextCursor cursor = textEdit->textCursor();
-    if (!cursor.hasSelection()) {
-        return QString();
-    }
-    
-    QString result;
-    int start = cursor.selectionStart();
-    int end = cursor.selectionEnd();
-    
-    // 遍历选中区域的所有字符
-    QTextCursor tempCursor(textEdit->document());
-    tempCursor.setPosition(start);
-    
-    while (tempCursor.position() < end) {
-        QTextCharFormat format = tempCursor.charFormat();
-        
-        if (format.objectType() == TagTextObject::TagTextFormat) {
-            // 这是一个标签对象，提取标签文本
-            QString tagText = format.property(TagTextObject::TagProperty).toString();
-            result += tagText;
-            
-            // 跳过这个对象字符
-            tempCursor.movePosition(QTextCursor::NextCharacter);
-        } else {
-            // 这是普通文本
-            result += tempCursor.document()->characterAt(tempCursor.position());
-            tempCursor.movePosition(QTextCursor::NextCharacter);
-        }
-    }
-    
-    return result;
 }
