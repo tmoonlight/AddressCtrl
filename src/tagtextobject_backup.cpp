@@ -1,8 +1,10 @@
-#include "tagtextobject.h"
+﻿#include "tagtextobject.h"
 #include "richtexteditorwidget.h"
 #include <QFontMetrics>
 #include <QApplication>
 #include <QPainterPath>
+
+// 静态变量定义已移除，改为实例变量
 
 TagTextObject::TagTextObject(RichTextEditorWidget* manager)
     : currentMousePos(-1, -1), tagManager(manager)
@@ -108,7 +110,7 @@ void TagTextObject::drawObject(QPainter *painter, const QRectF &rect,
         } else {
             backgroundColor = QColor(255, 255, 255); // 白色背景
         }
-        borderColor = QColor("#666666"); // 浅灰色边框
+        borderColor = QColor("#e9e9e9"); // 浅灰色边框
         textColor = QColor("#606266"); // 深灰色文字
     }
     

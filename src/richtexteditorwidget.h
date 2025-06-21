@@ -17,6 +17,12 @@
 #define MIN_LINE_HEIGHT 16             // 最小行高（像素）
 #define MAX_LINE_HEIGHT 48             // 最大行高（像素）
 
+// 标签类型枚举
+enum class TagType {
+    Normal,    // 普通标签（白底）
+    Error      // 错误标签（红色风格）
+};
+
 class RichTextEditorWidget : public QWidget
 {
     Q_OBJECT
@@ -44,6 +50,9 @@ public:
     int getLineHeight() const;
     void resetLineHeight();  // 重置为默认行高
     void applyLineHeightToDocument();  // 应用行高设置到整个文档
+    
+    // 标签操作接口
+    void triggerTagCreation(TagType tagType = TagType::Normal);  // 触发将光标前的文本转换为标签（类似输入分号的效果）
       // 标签管理接口（供TagTextObject回调使用）
     void updateTagRect(int position, const QRectF &rect, const QString &text);
     void updateTagDeleteButtonRect(int position, const QRectF &deleteRect);
@@ -63,7 +72,7 @@ protected:
 
 private:
     void setupUI();
-    void convertTextToPersonTag(const QString &text);
+    void convertTextToPersonTag(const QString &text, TagType tagType = TagType::Normal);
     void processDocumentForTags(); // 新增：扫描文档并处理分号转换标签
     QString getTextBeforeSemicolon(const QTextCursor &semicolonCursor); // 新增：获取分号前的文本
     QString getTextFromLastTagToCursor() const; // 新增：获取从上一个tag到当前光标的文本

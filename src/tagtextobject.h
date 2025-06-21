@@ -29,7 +29,7 @@ class TagTextObject : public QObject, public QTextObjectInterface
 
 public:
     enum { TagTextFormat = QTextFormat::UserObject + 1 };
-    enum { TagProperty = 1 }; // ??HoverProperty?????
+    enum { TagProperty = 1, TagTypeProperty = 2 }; // TagProperty存储文本，TagTypeProperty存储标签类型
 
     explicit TagTextObject(class RichTextEditorWidget* manager = nullptr);
 

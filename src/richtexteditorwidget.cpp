@@ -260,7 +260,7 @@ bool RichTextEditorWidget::eventFilter(QObject *obj, QEvent *event)
     return QWidget::eventFilter(obj, event);
 }
 
-void RichTextEditorWidget::convertTextToPersonTag(const QString &text)
+void RichTextEditorWidget::convertTextToPersonTag(const QString &text, TagType tagType)
 {
     QTextCursor cursor = textEdit->textCursor();
     
@@ -271,6 +271,7 @@ void RichTextEditorWidget::convertTextToPersonTag(const QString &text)
     QTextCharFormat tagFormat;
     tagFormat.setObjectType(TagTextObject::TagTextFormat);
     tagFormat.setProperty(TagTextObject::TagProperty, text);
+    tagFormat.setProperty(TagTextObject::TagTypeProperty, static_cast<int>(tagType)); // 设置标签类型
     tagFormat.setVerticalAlignment(QTextCharFormat::AlignMiddle); // 设置垂直居中对齐
     
     // 在光标位置插入标签对象
@@ -536,4 +537,49 @@ void RichTextEditorWidget::applyLineHeightToDocument()
     
     // 重新调整高度
     adjustTextEditHeight();
+}
+
+void RichTextEditorWidget::triggerTagCreation(TagType tagType)
+{
+    QTextCursor cursor = textEdit->textCursor();
+    QTextBlock currentBlock = cursor.block();
+    int cursorPosInBlock = cursor.positionInBlock();
+    
+    // 查找光标前最后一个标签的位置
+    int startPos = 0;
+    
+    // 遍历当前块，找到最后一个标签对象
+    QTextBlock::iterator it;
+    for (it = currentBlock.begin(); !it.atEnd(); ++it) {
+        QTextFragment fragment = it.fragment();
+        if (fragment.charFormat().objectType() == TagTextObject::TagTextFormat) {
+            int tagEndPosInBlock = fragment.position() + fragment.length() - currentBlock.position();
+            if (tagEndPosInBlock <= cursorPosInBlock) {
+                startPos = tagEndPosInBlock;
+            }
+        }
+    }
+    
+    // 提取从最后一个标签到光标位置的文本
+    QString blockText = currentBlock.text();
+    QString textToConvert = blockText.mid(startPos, cursorPosInBlock - startPos).trimmed();
+    
+    // 如果有文本需要转换
+    if (!textToConvert.isEmpty()) {
+        // 选择要转换的文本
+        QTextCursor selectCursor = cursor;
+        selectCursor.movePosition(QTextCursor::Left, QTextCursor::MoveAnchor, textToConvert.length());
+        selectCursor.movePosition(QTextCursor::Right, QTextCursor::KeepAnchor, textToConvert.length());
+        
+        // 删除选中的文本
+        selectCursor.removeSelectedText();
+        
+        // 在删除位置插入标签
+        textEdit->setTextCursor(selectCursor);
+        convertTextToPersonTag(textToConvert, tagType);
+        
+        // 触发文档更新处理
+        emit textChanged();
+        emitTextChangedFromLastTag();
+    }
 }

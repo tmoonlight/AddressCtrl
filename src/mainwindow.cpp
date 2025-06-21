@@ -80,6 +80,12 @@ void MainWindow::setupUI()
     lineHeightButton = new QPushButton("测试行高", this);
     lineHeightButton->setStyleSheet("QPushButton { background-color: #f39c12; color: white; padding: 8px 16px; border-radius: 4px; }");
     
+    triggerTagButton = new QPushButton("创建标签", this);
+    triggerTagButton->setStyleSheet("QPushButton { background-color: #9b59b6; color: white; padding: 8px 16px; border-radius: 4px; }");
+    
+    triggerErrorTagButton = new QPushButton("创建错误标签", this);
+    triggerErrorTagButton->setStyleSheet("QPushButton { background-color: #e74c3c; color: white; padding: 8px 16px; border-radius: 4px; }");
+    
     exitButton = new QPushButton("退出", this);
     exitButton->setStyleSheet("QPushButton { background-color: #95a5a6; color: white; padding: 8px 16px; border-radius: 4px; }");
     
@@ -87,6 +93,8 @@ void MainWindow::setupUI()
     buttonLayout->addWidget(clearButton);
     buttonLayout->addWidget(showTextButton);
     buttonLayout->addWidget(lineHeightButton);
+    buttonLayout->addWidget(triggerTagButton);
+    buttonLayout->addWidget(triggerErrorTagButton);
     buttonLayout->addWidget(exitButton);
       // 添加到主布局
     mainLayout->addWidget(titleLabel);
@@ -97,6 +105,8 @@ void MainWindow::setupUI()
     connect(clearButton, &QPushButton::clicked, this, &MainWindow::onButtonClicked);
     connect(showTextButton, &QPushButton::clicked, this, &MainWindow::showCompleteText);
     connect(lineHeightButton, &QPushButton::clicked, this, &MainWindow::testLineHeight);
+    connect(triggerTagButton, &QPushButton::clicked, this, &MainWindow::triggerTagCreation);
+    connect(triggerErrorTagButton, &QPushButton::clicked, this, &MainWindow::triggerErrorTagCreation);
     connect(exitButton, &QPushButton::clicked, QApplication::instance(), &QApplication::quit);
     connect(richTextEditor1, &RichTextEditorWidget::textChanged, this, &MainWindow::onEditor1TextChanged);
     connect(richTextEditor2, &RichTextEditorWidget::textChanged, this, &MainWindow::onEditor2TextChanged);
@@ -180,4 +190,46 @@ void MainWindow::testLineHeight()
                              .arg(richTextEditor2->getLineHeight());
     
     QMessageBox::information(this, "行高测试", message);
+}
+
+void MainWindow::triggerTagCreation()
+{
+    // 获取当前具有焦点的编辑器
+    RichTextEditorWidget* activeEditor = nullptr;
+    
+    if (richTextEditor1->getTextEdit()->hasFocus()) {
+        activeEditor = richTextEditor1;
+    } else if (richTextEditor2->getTextEdit()->hasFocus()) {
+        activeEditor = richTextEditor2;
+    } else {
+        // 如果没有编辑器有焦点，默认使用第一个编辑器
+        activeEditor = richTextEditor1;
+        activeEditor->getTextEdit()->setFocus();
+    }
+    
+    // 触发标签创建
+    activeEditor->triggerTagCreation();
+    
+    qDebug() << "手动触发标签创建完成";
+}
+
+void MainWindow::triggerErrorTagCreation()
+{
+    // 获取当前具有焦点的编辑器
+    RichTextEditorWidget* activeEditor = nullptr;
+    
+    if (richTextEditor1->getTextEdit()->hasFocus()) {
+        activeEditor = richTextEditor1;
+    } else if (richTextEditor2->getTextEdit()->hasFocus()) {
+        activeEditor = richTextEditor2;
+    } else {
+        // 如果没有编辑器有焦点，默认使用第一个编辑器
+        activeEditor = richTextEditor1;
+        activeEditor->getTextEdit()->setFocus();
+    }
+    
+    // 触发错误标签创建
+    activeEditor->triggerTagCreation(TagType::Error);
+    
+    qDebug() << "手动触发错误标签创建完成";
 }
