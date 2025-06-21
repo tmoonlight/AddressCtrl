@@ -188,6 +188,23 @@ void RichTextEditorWidget::adjustTextEditHeight()
 // 事件过滤器
 bool RichTextEditorWidget::eventFilter(QObject *obj, QEvent *event)
 {
+    // 处理键盘事件
+    if (event->type() == QEvent::KeyPress) {
+        QKeyEvent *keyEvent = static_cast<QKeyEvent*>(event);
+        
+        if (obj == textEdit && keyEvent->key() == Qt::Key_Tab) {
+            // Tab键处理：跳转到下一个控件
+            focusNextChild();
+            return true; // 阻止事件传播，不让Tab字符插入到文本中
+        }
+        
+        if (obj == textEdit && keyEvent->key() == Qt::Key_Backtab) {
+            // Shift+Tab处理：跳转到上一个控件
+            focusPreviousChild();
+            return true; // 阻止事件传播
+        }
+    }
+    
     // 处理鼠标点击事件
     if (event->type() == QEvent::MouseButtonPress) {
         QMouseEvent *mouseEvent = static_cast<QMouseEvent*>(event);

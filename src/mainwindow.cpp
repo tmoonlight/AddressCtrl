@@ -44,6 +44,12 @@ void MainWindow::setupUI()
     editor1Layout->addWidget(editor1Label);
     editor1Layout->addWidget(richTextEditor1);
     
+    // 添加测试控件到第一个编辑器容器（用于测试Tab键焦点切换）
+    QLineEdit *testInput1 = new QLineEdit(this);
+    testInput1->setPlaceholderText("测试输入框1 - 用于验证Tab键切换");
+    testInput1->setStyleSheet("margin: 5px; padding: 5px;");
+    editor1Layout->addWidget(testInput1);
+    
     // 创建第二个富文本编辑器控件
     QWidget *editor2Container = new QWidget();
     QVBoxLayout *editor2Layout = new QVBoxLayout(editor2Container);
@@ -52,6 +58,12 @@ void MainWindow::setupUI()
     richTextEditor2 = new RichTextEditorWidget(this);
     editor2Layout->addWidget(editor2Label);
     editor2Layout->addWidget(richTextEditor2);
+    
+    // 添加测试控件到第二个编辑器容器
+    QLineEdit *testInput2 = new QLineEdit(this);
+    testInput2->setPlaceholderText("测试输入框2 - 用于验证Tab键切换");
+    testInput2->setStyleSheet("margin: 5px; padding: 5px;");
+    editor2Layout->addWidget(testInput2);
     
     // 添加编辑器到水平布局
     editorsLayout->addWidget(editor1Container);
