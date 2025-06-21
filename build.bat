@@ -8,10 +8,12 @@ if not exist build (
 cd build
 
 echo 配置CMake项目...
-cmake .. -DCMAKE_PREFIX_PATH="C:/Qt/6.5.0/msvc2019_64"
+:: 使用Qt 5.15路径，请根据您的实际安装路径修改
+cmake .. -DCMAKE_PREFIX_PATH="C:/Qt/5.15.0/msvc2019_64"
 
 if %ERRORLEVEL% neq 0 (
-    echo CMake配置失败！请检查Qt路径设置。
+    echo CMake配置失败！请检查Qt5路径设置。
+    echo 请确保已安装Qt 5.15并修改上面的路径。
     pause
     exit /b 1
 )

@@ -59,7 +59,7 @@ void TagTextObject::drawObject(QPainter *painter, const QRectF &rect,
     
     // 绘制圆角矩形背景
     QPainterPath path;
-    path.addRoundedRect(drawRect, 12, 12);    // 设置渐变背景
+    path.addRoundedRect(drawRect, 3, 3);    // 设置渐变背景
     QLinearGradient gradient(drawRect.topLeft(), drawRect.bottomLeft());    // 使用更精确的悬停检测：检查当前标签是否被悬停
     bool isHovered = false;
     if (currentMousePos.x() >= 0 && currentMousePos.y() >= 0 && tagManager) {

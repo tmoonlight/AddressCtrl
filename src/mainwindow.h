@@ -38,6 +38,9 @@ private slots:
     void onEditor1TextChanged();
     void onEditor2TextChanged();
     void showCompleteText(); // 新增：显示完整文本内容
+    void onEditor1TextChangedFromLastTag(const QString &text); // 新增：编辑器1从上一个tag到光标的文本变化
+    void onEditor2TextChangedFromLastTag(const QString &text); // 新增：编辑器2从上一个tag到光标的文本变化
+    void testLineHeight(); // 新增：测试行高设置
 
 private:
     void setupUI();    QWidget *centralWidget;
@@ -48,6 +51,7 @@ private:
     QLabel *infoLabel;
     QPushButton *clearButton;
     QPushButton *showTextButton; // 新增：显示完整文本按钮
+    QPushButton *lineHeightButton; // 新增：行高测试按钮
     QPushButton *exitButton;
     
     // 使用富文本编辑器控件

@@ -1,6 +1,7 @@
 ﻿#include "mainwindow.h"
 #include <QApplication>
 #include <QMessageBox>
+#include <QDebug>
 
 MainWindow::MainWindow(QWidget *parent)
     : QMainWindow(parent)
@@ -64,12 +65,16 @@ void MainWindow::setupUI()
     showTextButton = new QPushButton("显示完整文本", this);
     showTextButton->setStyleSheet("QPushButton { background-color: #3498db; color: white; padding: 8px 16px; border-radius: 4px; }");
     
+    lineHeightButton = new QPushButton("测试行高", this);
+    lineHeightButton->setStyleSheet("QPushButton { background-color: #f39c12; color: white; padding: 8px 16px; border-radius: 4px; }");
+    
     exitButton = new QPushButton("退出", this);
     exitButton->setStyleSheet("QPushButton { background-color: #95a5a6; color: white; padding: 8px 16px; border-radius: 4px; }");
     
     buttonLayout->addStretch();
     buttonLayout->addWidget(clearButton);
     buttonLayout->addWidget(showTextButton);
+    buttonLayout->addWidget(lineHeightButton);
     buttonLayout->addWidget(exitButton);
       // 添加到主布局
     mainLayout->addWidget(titleLabel);
@@ -79,9 +84,16 @@ void MainWindow::setupUI()
       // 连接信号和槽
     connect(clearButton, &QPushButton::clicked, this, &MainWindow::onButtonClicked);
     connect(showTextButton, &QPushButton::clicked, this, &MainWindow::showCompleteText);
+    connect(lineHeightButton, &QPushButton::clicked, this, &MainWindow::testLineHeight);
     connect(exitButton, &QPushButton::clicked, QApplication::instance(), &QApplication::quit);
     connect(richTextEditor1, &RichTextEditorWidget::textChanged, this, &MainWindow::onEditor1TextChanged);
     connect(richTextEditor2, &RichTextEditorWidget::textChanged, this, &MainWindow::onEditor2TextChanged);
+    
+    // 连接新的textChangedFromLastTag信号
+    connect(richTextEditor1, &RichTextEditorWidget::textChangedFromLastTag, 
+            this, &MainWindow::onEditor1TextChangedFromLastTag);
+    connect(richTextEditor2, &RichTextEditorWidget::textChangedFromLastTag, 
+            this, &MainWindow::onEditor2TextChangedFromLastTag);
     
     // 设置一些示例文本
     richTextEditor1->setPlainText("欢迎使用富文本编辑器1！您可以输入文本，然后在文本后添加分号将其转换为人员标签；");
@@ -106,7 +118,7 @@ void MainWindow::onEditor2TextChanged()
 
 void MainWindow::showCompleteText()
 {
-    QString completeText1 = richTextEditor1->getCompleteText();
+    QString completeText1 = richTextEditor1->getCompleteText(true);
     QString completeText2 = richTextEditor2->getCompleteText();
     
     QString message = QString("编辑器1的完整文本:\n%1\n\n编辑器2的完整文本:\n%2")
@@ -114,4 +126,46 @@ void MainWindow::showCompleteText()
                       .arg(completeText2.isEmpty() ? "(空)" : completeText2);
     
     QMessageBox::information(this, "完整文本内容", message);
+}
+
+void MainWindow::onEditor1TextChangedFromLastTag(const QString &text)
+{
+    qDebug() << "编辑器1 - 从上一个tag到光标的文本:" << text;
+}
+
+void MainWindow::onEditor2TextChangedFromLastTag(const QString &text)
+{
+    qDebug() << "编辑器2 - 从上一个tag到光标的文本:" << text;
+}
+
+void MainWindow::testLineHeight()
+{
+    static int testHeight = 20;  // 静态变量用于循环测试不同的行高
+    
+    // 循环测试不同的行高：20, 30, 40, 然后回到默认
+    if (testHeight == 20) {
+        testHeight = 30;
+    } else if (testHeight == 30) {
+        testHeight = 40;
+    } else if (testHeight == 40) {
+        testHeight = 24; // 默认行高
+    } else {
+        testHeight = 20;
+    }
+    
+    // 应用到两个编辑器
+    richTextEditor1->setLineHeight(testHeight);
+    richTextEditor2->setLineHeight(testHeight);
+    
+    qDebug() << "行高已设置为:" << testHeight << "像素";
+    
+    // 显示信息
+    QString message = QString("行高已设置为: %1 像素\n\n"
+                             "编辑器1当前行高: %2 像素\n"
+                             "编辑器2当前行高: %3 像素")
+                             .arg(testHeight)
+                             .arg(richTextEditor1->getLineHeight())
+                             .arg(richTextEditor2->getLineHeight());
+    
+    QMessageBox::information(this, "行高测试", message);
 }

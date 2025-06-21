@@ -4,7 +4,7 @@
 #include <QTextBlock>
 
 RichTextEditorWidget::RichTextEditorWidget(QWidget *parent)
-    : QWidget(parent), minimumHeight(0), maximumHeight(300)
+    : QWidget(parent), minimumHeight(0), maximumHeight(300), currentLineHeight(DEFAULT_LINE_HEIGHT)
 {
     // 初始化标签文本对象，并设置管理器为自己
     tagTextObject = new TagTextObject(this);
@@ -42,6 +42,11 @@ void RichTextEditorWidget::setupUI()
     // 注册自定义文本对象
     textEdit->document()->documentLayout()->registerHandler(TagTextObject::TagTextFormat, tagTextObject);
     
+    // 设置默认字符格式为垂直居中对齐
+    QTextCharFormat defaultCharFormat;
+    defaultCharFormat.setVerticalAlignment(QTextCharFormat::AlignMiddle);
+    textEdit->setCurrentCharFormat(defaultCharFormat);
+    
     // 为textEdit和其视口启用鼠标跟踪和事件过滤器
     textEdit->installEventFilter(this);
     textEdit->viewport()->setMouseTracking(true);
@@ -52,6 +57,7 @@ void RichTextEditorWidget::setupUI()
         clearAllTags();
         processDocumentForTags(); // 扫描文档并处理分号
         emit textChanged();
+        emitTextChangedFromLastTag(); // 发射新的事件
     });
     
     // 连接文档内容变化信号来自动调整高度
@@ -60,6 +66,20 @@ void RichTextEditorWidget::setupUI()
     
     // 初始化高度
     adjustTextEditHeight();
+    
+    // 应用默认行高设置
+    applyLineHeightToDocument();
+    
+    // 连接光标位置变化信号，确保新输入的文本也是垂直居中的
+    connect(textEdit, &QTextEdit::cursorPositionChanged, [this]() {
+        QTextCursor cursor = textEdit->textCursor();
+        QTextCharFormat format = cursor.charFormat();
+        if (format.verticalAlignment() != QTextCharFormat::AlignMiddle) {
+            format.setVerticalAlignment(QTextCharFormat::AlignMiddle);
+            cursor.setCharFormat(format);
+            textEdit->setTextCursor(cursor);
+        }
+    });
 }
 
 // 公共接口
@@ -73,7 +93,7 @@ QString RichTextEditorWidget::getHtmlText() const
     return textEdit->toHtml();
 }
 
-QString RichTextEditorWidget::getCompleteText() const
+QString RichTextEditorWidget::getCompleteText(bool isTagOnly) const
 {
     QString completeText;
     QTextDocument *doc = textEdit->document();
@@ -81,25 +101,23 @@ QString RichTextEditorWidget::getCompleteText() const
     // 遍历整个文档的所有块
     QTextBlock block = doc->begin();
     while (block.isValid()) {
-        // 遍历块中的所有片段
         QTextBlock::iterator it;
         for (it = block.begin(); !it.atEnd(); ++it) {
             QTextFragment fragment = it.fragment();
-            
-            // 检查是否是标签对象
-            if (fragment.charFormat().objectType() == TagTextObject::TagTextFormat) {
+            bool isTag = fragment.charFormat().objectType() == TagTextObject::TagTextFormat;
+            if (isTag) {
                 // 获取标签的文本内容
                 QString tagText = fragment.charFormat().property(TagTextObject::TagProperty).toString();
                 completeText += tagText;
-            } else {
-                // 普通文本片段
+            } else if (!isTagOnly) {
+                // 普通文本片段，仅当非tagOnly时添加
                 completeText += fragment.text();
             }
         }
         
-        // 如果不是最后一个块，添加换行符
         block = block.next();
-        if (block.isValid()) {
+        if (block.isValid() && !isTagOnly) {
+            // 只在完整模式下添加换行符
             completeText += "\n";
         }
     }
@@ -110,11 +128,13 @@ QString RichTextEditorWidget::getCompleteText() const
 void RichTextEditorWidget::setPlainText(const QString &text)
 {
     textEdit->setPlainText(text);
+    applyLineHeightToDocument();
 }
 
 void RichTextEditorWidget::setHtmlText(const QString &html)
 {
     textEdit->setHtml(html);
+    applyLineHeightToDocument();
 }
 
 void RichTextEditorWidget::clear()
@@ -227,13 +247,22 @@ void RichTextEditorWidget::convertTextToPersonTag(const QString &text)
 {
     QTextCursor cursor = textEdit->textCursor();
     
+    // 保存当前块的格式
+    QTextBlockFormat currentBlockFormat = cursor.blockFormat();
+    
     // 创建自定义对象格式
     QTextCharFormat tagFormat;
     tagFormat.setObjectType(TagTextObject::TagTextFormat);
     tagFormat.setProperty(TagTextObject::TagProperty, text);
+    tagFormat.setVerticalAlignment(QTextCharFormat::AlignMiddle); // 设置垂直居中对齐
     
     // 在光标位置插入标签对象
     cursor.insertText(QString(QChar::ObjectReplacementCharacter), tagFormat);
+    
+    // 确保当前块保持行高设置
+    QTextBlockFormat blockFormat = currentBlockFormat;
+    blockFormat.setLineHeight(currentLineHeight * LINE_SPACING_FACTOR, QTextBlockFormat::FixedHeight);
+    cursor.setBlockFormat(blockFormat);
     
     emit tagInserted(text);
 }
@@ -385,4 +414,109 @@ QString RichTextEditorWidget::getTextBeforeSemicolon(const QTextCursor &semicolo
     QString textToConvert = blockText.mid(startPos, semicolonPosInBlock - startPos).trimmed();
     
     return textToConvert;
+}
+
+QString RichTextEditorWidget::getTextFromLastTagToCursor() const
+{
+    QTextCursor cursor = textEdit->textCursor();
+    QTextDocument *doc = textEdit->document();
+    int cursorPosition = cursor.position();
+    
+    // 从当前光标位置向前查找最近的标签
+    int lastTagPosition = -1;
+    
+    // 遍历文档查找最近的标签位置
+    QTextBlock block = doc->begin();
+    while (block.isValid()) {
+        QTextBlock::iterator it;
+        for (it = block.begin(); !it.atEnd(); ++it) {
+            QTextFragment fragment = it.fragment();
+            int fragmentStart = fragment.position();
+            int fragmentEnd = fragmentStart + fragment.length();
+            
+            // 如果片段在光标之前或包含光标，并且是标签
+            if (fragmentStart < cursorPosition && 
+                fragment.charFormat().objectType() == TagTextObject::TagTextFormat) {
+                lastTagPosition = fragmentEnd; // 标签结束位置
+            }
+        }
+        block = block.next();
+    }
+    
+    // 如果没找到标签，从文档开始位置获取
+    int startPosition = (lastTagPosition >= 0) ? lastTagPosition : 0;
+    
+    // 创建选择光标并获取文本
+    QTextCursor selectCursor(doc);
+    selectCursor.setPosition(startPosition);
+    selectCursor.setPosition(cursorPosition, QTextCursor::KeepAnchor);
+    
+    return selectCursor.selectedText();
+}
+
+void RichTextEditorWidget::emitTextChangedFromLastTag()
+{
+    QString textFromLastTag = getTextFromLastTagToCursor();
+    emit textChangedFromLastTag(textFromLastTag);
+}
+
+// 行高设置相关方法实现
+void RichTextEditorWidget::setLineHeight(int height)
+{
+    // 确保行高在合理范围内
+    if (height < MIN_LINE_HEIGHT) {
+        height = MIN_LINE_HEIGHT;
+    } else if (height > MAX_LINE_HEIGHT) {
+        height = MAX_LINE_HEIGHT;
+    }
+    
+    currentLineHeight = height;
+    applyLineHeightToDocument();
+}
+
+int RichTextEditorWidget::getLineHeight() const
+{
+    return currentLineHeight;
+}
+
+void RichTextEditorWidget::resetLineHeight()
+{
+    currentLineHeight = DEFAULT_LINE_HEIGHT;
+    applyLineHeightToDocument();
+}
+
+void RichTextEditorWidget::applyLineHeightToDocument()
+{
+    if (!textEdit || !textEdit->document()) {
+        return;
+    }
+    
+    QTextDocument *doc = textEdit->document();
+    QTextCursor cursor(doc);
+    
+    // 保存当前光标位置
+    QTextCursor originalCursor = textEdit->textCursor();
+    int originalPosition = originalCursor.position();
+    
+    // 选择整个文档
+    cursor.select(QTextCursor::Document);
+    
+    // 创建块格式并设置行高
+    QTextBlockFormat blockFormat;
+    blockFormat.setLineHeight(currentLineHeight * LINE_SPACING_FACTOR, QTextBlockFormat::FixedHeight);
+    
+    // 创建字符格式并设置垂直对齐
+    QTextCharFormat charFormat;
+    charFormat.setVerticalAlignment(QTextCharFormat::AlignMiddle);
+    
+    // 应用格式到整个文档
+    cursor.mergeBlockFormat(blockFormat);
+    cursor.mergeCharFormat(charFormat);
+    
+    // 恢复原来的光标位置
+    originalCursor.setPosition(originalPosition);
+    textEdit->setTextCursor(originalCursor);
+    
+    // 重新调整高度
+    adjustTextEditHeight();
 }

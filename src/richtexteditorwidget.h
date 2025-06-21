@@ -11,6 +11,12 @@
 #include <QMouseEvent>
 #include "tagtextobject.h"
 
+// 行高设置宏定义
+#define DEFAULT_LINE_HEIGHT 30        // 默认行高（像素）
+#define LINE_SPACING_FACTOR 1.2       // 行间距因子
+#define MIN_LINE_HEIGHT 16             // 最小行高（像素）
+#define MAX_LINE_HEIGHT 48             // 最大行高（像素）
+
 class RichTextEditorWidget : public QWidget
 {
     Q_OBJECT
@@ -21,7 +27,7 @@ public:
       // 公共接口
     QString getPlainText() const;
     QString getHtmlText() const;
-    QString getCompleteText() const; // 新增：获取包含标签内容的完整文本
+    QString getCompleteText(bool isTagOnly = false) const; // 获取包含标签内容的完整文本，isTagOnly为true时只获取标签内容
     void setPlainText(const QString &text);
     void setHtmlText(const QString &html);
     void clear();
@@ -32,6 +38,12 @@ public:
     // 高度调整设置
     void setMaximumTextHeight(int maxHeight);
     int getMaximumTextHeight() const;
+    
+    // 行高设置接口
+    void setLineHeight(int height);
+    int getLineHeight() const;
+    void resetLineHeight();  // 重置为默认行高
+    void applyLineHeightToDocument();  // 应用行高设置到整个文档
       // 标签管理接口（供TagTextObject回调使用）
     void updateTagRect(int position, const QRectF &rect, const QString &text);
     void updateTagDeleteButtonRect(int position, const QRectF &deleteRect);
@@ -44,6 +56,7 @@ signals:
     void textChanged();
     void tagInserted(const QString &tagText);
     void tagDeleted(int position);
+    void textChangedFromLastTag(const QString &textFromLastTag); // 新增：从上一个tag到当前光标的文本内容
 
 protected:
     bool eventFilter(QObject *obj, QEvent *event) override;
@@ -53,6 +66,8 @@ private:
     void convertTextToPersonTag(const QString &text);
     void processDocumentForTags(); // 新增：扫描文档并处理分号转换标签
     QString getTextBeforeSemicolon(const QTextCursor &semicolonCursor); // 新增：获取分号前的文本
+    QString getTextFromLastTagToCursor() const; // 新增：获取从上一个tag到当前光标的文本
+    void emitTextChangedFromLastTag(); // 新增：发射textChangedFromLastTag信号
     void adjustTextEditHeight();
     
     // UI组件
@@ -68,6 +83,9 @@ private:
     // 自动高度调整
     int minimumHeight;
     int maximumHeight;
+    
+    // 行高设置
+    int currentLineHeight;  // 当前行高设置
 };
 
 #endif // RICHTEXTEDITORWIDGET_H
