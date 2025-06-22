@@ -23,7 +23,9 @@ void RichTextEditorWidget::setupUI()
     
     // 创建富文本编辑器
     textEdit = new QTextEdit(this);
-    textEdit->setPlaceholderText("请输入文本内容...");
+
+
+    //textEdit->setPlaceholderText("请输入文本内容...");
     textEdit->setAcceptRichText(true);
     textEdit->setMouseTracking(true);
     
@@ -31,7 +33,29 @@ void RichTextEditorWidget::setupUI()
     textEdit->setVerticalScrollBarPolicy(Qt::ScrollBarAlwaysOff);
     textEdit->setHorizontalScrollBarPolicy(Qt::ScrollBarAlwaysOff);
     textEdit->setWordWrapMode(QTextOption::WrapAtWordBoundaryOrAnywhere);
+     // 设置文档的边距（影响文本内容与边框的距离）
+    textEdit->document()->setDocumentMargin(0); // 只有下是都是10像素
     
+    //setDocumentMargin 下10像素
+
+    // 检查文档的根框架边距
+    QTextFrameFormat frameFormat = textEdit->document()->rootFrame()->frameFormat();
+    frameFormat.setMargin(0);
+    frameFormat.setTopMargin(-3);
+    frameFormat.setBottomMargin(0);
+    textEdit->document()->rootFrame()->setFrameFormat(frameFormat);
+
+    // 或者使用样式表设置更精确的边距
+    textEdit->setStyleSheet(
+        "QTextEdit {"
+        "   padding: 0px;" // 上 右 下 左
+        "padding-left: 5px;"
+        "   margin: 0px;" // 上 右 下 左
+        "   border: 1px solid #ccc;"
+        "   border-radius: 4px;"
+        "}"
+    );
+
     // 计算初始最小高度
     QFontMetrics fm(textEdit->font());
     int lineHeight = fm.lineSpacing();
@@ -168,7 +192,7 @@ void RichTextEditorWidget::adjustTextEditHeight()
     
     // 计算单行文本的高度
     QFontMetrics fm(textEdit->font());
-    int singleLineHeight = fm.height() + 10; // 添加一些边距
+    int singleLineHeight = fm.height() + 13; // 添加一些边距
     
     // 设置最小高度为单行高度
     int newHeight = qMax(singleLineHeight, documentHeight);
@@ -178,6 +202,7 @@ void RichTextEditorWidget::adjustTextEditHeight()
         newHeight = qMin(newHeight, maximumHeight);
     }
     
+    newHeight = newHeight+10;
     // 设置新的高度
     textEdit->setFixedHeight(newHeight);
     

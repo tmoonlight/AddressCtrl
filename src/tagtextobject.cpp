@@ -104,7 +104,7 @@ void TagTextObject::drawObject(QPainter *painter, const QRectF &rect,
     } else {
         // 普通标签的白色风格
         if (isHovered) {
-            backgroundColor = QColor(245, 245, 245); // hover背景色
+            backgroundColor = QColor(220, 220, 220); // hover背景色
         } else {
             backgroundColor = QColor(255, 255, 255); // 白色背景
         }

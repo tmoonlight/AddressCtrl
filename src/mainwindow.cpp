@@ -47,7 +47,7 @@ void MainWindow::setupUI()
     // 添加测试控件到第一个编辑器容器（用于测试Tab键焦点切换）
     QLineEdit *testInput1 = new QLineEdit(this);
     testInput1->setPlaceholderText("测试输入框1 - 用于验证Tab键切换");
-    testInput1->setStyleSheet("margin: 5px; padding: 5px;");
+    //testInput1->setStyleSheet("margin: 5px; padding: 5px;");
     editor1Layout->addWidget(testInput1);
     
     // 创建第二个富文本编辑器控件
@@ -62,7 +62,7 @@ void MainWindow::setupUI()
     // 添加测试控件到第二个编辑器容器
     QLineEdit *testInput2 = new QLineEdit(this);
     testInput2->setPlaceholderText("测试输入框2 - 用于验证Tab键切换");
-    testInput2->setStyleSheet("margin: 5px; padding: 5px;");
+    //testInput2->setStyleSheet("margin: 5px; padding: 5px;");
     editor2Layout->addWidget(testInput2);
     
     // 添加编辑器到水平布局
@@ -118,8 +118,8 @@ void MainWindow::setupUI()
             this, &MainWindow::onEditor2TextChangedFromLastTag);
     
     // 设置一些示例文本
-    richTextEditor1->setPlainText("欢迎使用富文本编辑器1！您可以输入文本，然后在文本后添加分号将其转换为人员标签；");
-    richTextEditor2->setPlainText("这是第二个富文本编辑器；支持独立的标签管理；");
+    //richTextEditor1->setPlainText("欢迎使用富文本编辑器1！您可以输入文本，然后在文本后添加分号将其转换为人员标签；");
+    //richTextEditor2->setPlainText("这是第二个富文本编辑器；支持独立的标签管理；");
 }
 
 void MainWindow::onButtonClicked()

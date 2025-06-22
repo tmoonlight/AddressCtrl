@@ -12,10 +12,10 @@
 #include "tagtextobject.h"
 
 // 行高设置宏定义
-#define DEFAULT_LINE_HEIGHT 30        // 默认行高（像素）
+#define DEFAULT_LINE_HEIGHT 24        // 默认行高（像素）
 #define LINE_SPACING_FACTOR 1.2       // 行间距因子
-#define MIN_LINE_HEIGHT 16             // 最小行高（像素）
-#define MAX_LINE_HEIGHT 48             // 最大行高（像素）
+#define MIN_LINE_HEIGHT 12             // 最小行高（像素）
+#define MAX_LINE_HEIGHT 36             // 最大行高（像素）
 
 // 标签类型枚举
 enum class TagType {
