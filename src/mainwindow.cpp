@@ -82,9 +82,11 @@ void MainWindow::setupUI()
     
     triggerTagButton = new QPushButton("创建标签", this);
     triggerTagButton->setStyleSheet("QPushButton { background-color: #9b59b6; color: white; padding: 8px 16px; border-radius: 4px; }");
-    
-    triggerErrorTagButton = new QPushButton("创建错误标签", this);
+      triggerErrorTagButton = new QPushButton("创建错误标签", this);
     triggerErrorTagButton->setStyleSheet("QPushButton { background-color: #e74c3c; color: white; padding: 8px 16px; border-radius: 4px; }");
+    
+    themeColorButton = new QPushButton("更换主题色", this);
+    themeColorButton->setStyleSheet("QPushButton { background-color: #9b59b6; color: white; padding: 8px 16px; border-radius: 4px; }");
     
     exitButton = new QPushButton("退出", this);
     exitButton->setStyleSheet("QPushButton { background-color: #95a5a6; color: white; padding: 8px 16px; border-radius: 4px; }");
@@ -95,6 +97,7 @@ void MainWindow::setupUI()
     buttonLayout->addWidget(lineHeightButton);
     buttonLayout->addWidget(triggerTagButton);
     buttonLayout->addWidget(triggerErrorTagButton);
+    buttonLayout->addWidget(themeColorButton);
     buttonLayout->addWidget(exitButton);
       // 添加到主布局
     mainLayout->addWidget(titleLabel);
@@ -104,9 +107,9 @@ void MainWindow::setupUI()
       // 连接信号和槽
     connect(clearButton, &QPushButton::clicked, this, &MainWindow::onButtonClicked);
     connect(showTextButton, &QPushButton::clicked, this, &MainWindow::showCompleteText);
-    connect(lineHeightButton, &QPushButton::clicked, this, &MainWindow::testLineHeight);
-    connect(triggerTagButton, &QPushButton::clicked, this, &MainWindow::triggerTagCreation);
+    connect(lineHeightButton, &QPushButton::clicked, this, &MainWindow::testLineHeight);    connect(triggerTagButton, &QPushButton::clicked, this, &MainWindow::triggerTagCreation);
     connect(triggerErrorTagButton, &QPushButton::clicked, this, &MainWindow::triggerErrorTagCreation);
+    connect(themeColorButton, &QPushButton::clicked, this, &MainWindow::changeThemeColor);
     connect(exitButton, &QPushButton::clicked, QApplication::instance(), &QApplication::quit);
     connect(richTextEditor1, &RichTextEditorWidget::textChanged, this, &MainWindow::onEditor1TextChanged);
     connect(richTextEditor2, &RichTextEditorWidget::textChanged, this, &MainWindow::onEditor2TextChanged);
@@ -232,4 +235,34 @@ void MainWindow::triggerErrorTagCreation()
     activeEditor->triggerTagCreation(TagType::Error);
     
     qDebug() << "手动触发错误标签创建完成";
+}
+
+void MainWindow::changeThemeColor()
+{
+    // 定义几种预设的主题色
+    static QList<QColor> themeColors = {
+        QColor(70, 130, 180),   // 钢蓝色（默认）
+        QColor(52, 152, 219),   // 亮蓝色
+        QColor(155, 89, 182),   // 紫色
+        QColor(46, 204, 113),   // 绿色
+        QColor(231, 76, 60),    // 红色
+        QColor(230, 126, 34),   // 橙色
+        QColor(241, 196, 15)    // 黄色
+    };
+    
+    static int currentIndex = 0;
+    currentIndex = (currentIndex + 1) % themeColors.size();
+    
+    QColor newColor = themeColors[currentIndex];
+    
+    // 为两个编辑器设置新的主题色
+    richTextEditor1->setThemeColor(newColor);
+    richTextEditor2->setThemeColor(newColor);
+    
+    // 更新按钮文本显示当前颜色
+    themeColorButton->setText(QString("主题色: %1").arg(newColor.name()));
+    
+    QMessageBox::information(this, "主题色已更改", 
+                           QString("新的主题色: %1\n\n现在鼠标悬停或点击文本框时边框会变成这个颜色！")
+                           .arg(newColor.name()));
 }

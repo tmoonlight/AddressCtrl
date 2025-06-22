@@ -9,6 +9,9 @@
 #include <QKeyEvent>
 #include <QTextBlock>
 #include <QMouseEvent>
+#include <QColor>
+#include <QPropertyAnimation>
+#include <QGraphicsEffect>
 #include "tagtextobject.h"
 
 // 行高设置宏定义
@@ -26,6 +29,7 @@ enum class TagType {
 class RichTextEditorWidget : public QWidget
 {
     Q_OBJECT
+    Q_PROPERTY(QColor borderColor READ getBorderColor WRITE setBorderColor)
 
 public:
     explicit RichTextEditorWidget(QWidget *parent = nullptr);
@@ -48,9 +52,16 @@ public:
     // 行高设置接口
     void setLineHeight(int height);
     int getLineHeight() const;
-    void resetLineHeight();  // 重置为默认行高
-    void applyLineHeightToDocument();  // 应用行高设置到整个文档
+    void resetLineHeight();
+      // 主题色设置接口
+    void setThemeColor(const QColor &color);
+    QColor getThemeColor() const;
+    void resetThemeColor();
     
+    // 边框颜色属性（用于动画）
+    void setBorderColor(const QColor &color);
+    QColor getBorderColor() const;
+
     // 标签操作接口
     void triggerTagCreation(TagType tagType = TagType::Normal);  // 触发将光标前的文本转换为标签（类似输入分号的效果）
       // 标签管理接口（供TagTextObject回调使用）
@@ -78,6 +89,7 @@ private:
     QString getTextFromLastTagToCursor() const; // 新增：获取从上一个tag到当前光标的文本
     void emitTextChangedFromLastTag(); // 新增：发射textChangedFromLastTag信号
     void adjustTextEditHeight();
+    void applyLineHeightToDocument(); // 新增：应用行高设置到文档
     
     // UI组件
     QVBoxLayout *mainLayout;
@@ -95,6 +107,15 @@ private:
     
     // 行高设置
     int currentLineHeight;  // 当前行高设置
+      // 主题色设置
+    QColor themeColor;      // 主题色
+    QColor currentBorderColor;  // 当前边框颜色
+    QString normalStyleSheet;   // 正常状态的样式表
+    QString focusStyleSheet;    // 焦点状态的样式表
+    QPropertyAnimation *borderAnimation; // 边框颜色动画    // 私有方法
+    void updateStyleSheets();   // 更新样式表
+    void animateBorderColor(const QColor &targetColor); // 动画边框颜色
+    void updateBorderColor(); // 更新边框颜色（动画过程中调用）
 };
 
 #endif // RICHTEXTEDITORWIDGET_H

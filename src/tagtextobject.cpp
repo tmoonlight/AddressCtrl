@@ -156,7 +156,7 @@ void TagTextObject::drawObject(QPainter *painter, const QRectF &rect,
         // 感叹号的主体部分
         painter->drawLine(center.x(), center.y() - 3, center.x(), center.y() + 1);
         // 感叹号的点
-        painter->drawPoint(center.x(), center.y() + 2.5);
+        painter->drawPoint(center.x(), center.y() + 4);
         
         // 调整文本绘制区域，为图标留出空间
         QRectF adjustedTextRect = textRect.adjusted(iconSize + 6, 0, 0, 0);

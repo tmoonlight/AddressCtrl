@@ -4,10 +4,16 @@
 #include <QTextBlock>
 
 RichTextEditorWidget::RichTextEditorWidget(QWidget *parent)
-    : QWidget(parent), minimumHeight(0), maximumHeight(300), currentLineHeight(DEFAULT_LINE_HEIGHT)
+    : QWidget(parent), minimumHeight(0), maximumHeight(300), currentLineHeight(DEFAULT_LINE_HEIGHT),
+      themeColor(QColor(70, 130, 180)), currentBorderColor(QColor(204, 204, 204)) // 默认主题色为钢蓝色，默认边框色为灰色
 {
     // 初始化标签文本对象，并设置管理器为自己
     tagTextObject = new TagTextObject(this);
+    
+    // 初始化边框颜色动画
+    borderAnimation = new QPropertyAnimation(this, "borderColor");
+    borderAnimation->setDuration(300); // 300ms过渡时间
+    borderAnimation->setEasingCurve(QEasingCurve::OutCubic);
     
     setupUI();
 }
@@ -20,23 +26,18 @@ RichTextEditorWidget::~RichTextEditorWidget()
 void RichTextEditorWidget::setupUI()
 {    mainLayout = new QVBoxLayout(this);
     mainLayout->setContentsMargins(0, 0, 0, 0);
-    
-    // 创建富文本编辑器
+      // 创建富文本编辑器
     textEdit = new QTextEdit(this);
 
-
-    //textEdit->setPlaceholderText("请输入文本内容...");
     textEdit->setAcceptRichText(true);
     textEdit->setMouseTracking(true);
+    textEdit->setFocusPolicy(Qt::StrongFocus); // 确保可以获取焦点
     
     // 设置滚动条策略
     textEdit->setVerticalScrollBarPolicy(Qt::ScrollBarAlwaysOff);
     textEdit->setHorizontalScrollBarPolicy(Qt::ScrollBarAlwaysOff);
-    textEdit->setWordWrapMode(QTextOption::WrapAtWordBoundaryOrAnywhere);
-     // 设置文档的边距（影响文本内容与边框的距离）
-    textEdit->document()->setDocumentMargin(0); // 只有下是都是10像素
-    
-    //setDocumentMargin 下10像素
+    textEdit->setWordWrapMode(QTextOption::WrapAtWordBoundaryOrAnywhere);    // 设置文档的边距（影响文本内容与边框的距离）
+    textEdit->document()->setDocumentMargin(0);
 
     // 检查文档的根框架边距
     QTextFrameFormat frameFormat = textEdit->document()->rootFrame()->frameFormat();
@@ -45,16 +46,8 @@ void RichTextEditorWidget::setupUI()
     frameFormat.setBottomMargin(0);
     textEdit->document()->rootFrame()->setFrameFormat(frameFormat);
 
-    // 或者使用样式表设置更精确的边距
-    textEdit->setStyleSheet(
-        "QTextEdit {"
-        "   padding: 0px;" // 上 右 下 左
-        "padding-left: 5px;"
-        "   margin: 0px;" // 上 右 下 左
-        "   border: 1px solid #ccc;"
-        "   border-radius: 4px;"
-        "}"
-    );
+    // 初始化样式表
+    updateStyleSheets();
 
     // 计算初始最小高度
     QFontMetrics fm(textEdit->font());
@@ -212,7 +205,31 @@ void RichTextEditorWidget::adjustTextEditHeight()
 
 // 事件过滤器
 bool RichTextEditorWidget::eventFilter(QObject *obj, QEvent *event)
-{
+{    // 处理焦点事件
+    if (obj == textEdit) {
+        if (event->type() == QEvent::FocusIn) {
+            animateBorderColor(themeColor);
+            return false; // 继续传播事件
+        } else if (event->type() == QEvent::FocusOut) {
+            animateBorderColor(QColor(204, 204, 204)); // 恢复默认灰色
+            return false; // 继续传播事件
+        }
+    }
+    
+    // 处理鼠标进入和离开事件
+    if (obj == textEdit) {
+        if (event->type() == QEvent::Enter) {
+            if (!textEdit->hasFocus()) {
+                animateBorderColor(themeColor);
+            }
+            return false; // 继续传播事件
+        } else if (event->type() == QEvent::Leave) {
+            if (!textEdit->hasFocus()) {
+                animateBorderColor(QColor(204, 204, 204)); // 恢复默认灰色
+            }
+            return false; // 继续传播事件
+        }
+    }
     // 处理键盘事件
     if (event->type() == QEvent::KeyPress) {
         QKeyEvent *keyEvent = static_cast<QKeyEvent*>(event);
@@ -607,4 +624,67 @@ void RichTextEditorWidget::triggerTagCreation(TagType tagType)
         emit textChanged();
         emitTextChangedFromLastTag();
     }
+}
+
+// 主题色设置相关方法实现
+void RichTextEditorWidget::setThemeColor(const QColor &color)
+{
+    themeColor = color;
+    // 如果当前文本框有焦点或鼠标悬停，立即更新边框颜色
+    if (textEdit && (textEdit->hasFocus() || textEdit->underMouse())) {
+        animateBorderColor(themeColor);
+    }
+}
+
+QColor RichTextEditorWidget::getThemeColor() const
+{
+    return themeColor;
+}
+
+void RichTextEditorWidget::resetThemeColor()
+{
+    themeColor = QColor(70, 130, 180); // 默认钢蓝色
+    // 如果当前文本框有焦点或鼠标悬停，立即更新边框颜色
+    if (textEdit && (textEdit->hasFocus() || textEdit->underMouse())) {
+        animateBorderColor(themeColor);
+    }
+}
+
+void RichTextEditorWidget::updateStyleSheets()
+{
+    // 构建基础样式表模板
+    QString baseStyleSheet = 
+        "QTextEdit {"
+        "   padding: 0px;"
+        "   padding-left: 5px;"
+        "   margin: 0px;"
+        "   border: 1px solid %1;"
+        "   border-radius: 4px;"
+        "   background-color: white;"
+        "}";
+    
+    // 设置当前边框颜色的样式
+    textEdit->setStyleSheet(baseStyleSheet.arg(currentBorderColor.name()));
+}
+
+void RichTextEditorWidget::animateBorderColor(const QColor &targetColor)
+{
+    if (borderAnimation->state() == QAbstractAnimation::Running) {
+        borderAnimation->stop();
+    }
+    
+    borderAnimation->setStartValue(currentBorderColor);
+    borderAnimation->setEndValue(targetColor);
+    borderAnimation->start();
+}
+
+void RichTextEditorWidget::setBorderColor(const QColor &color)
+{
+    currentBorderColor = color;
+    updateStyleSheets();
+}
+
+QColor RichTextEditorWidget::getBorderColor() const
+{
+    return currentBorderColor;
 }
