@@ -15,6 +15,9 @@
 #include <QMessageLogContext>
 #include <QMutex>
 #include <QScrollBar>
+#include <QTimer>
+#include <QThread>
+#include <QTime>
 
 class ComposeDevTool : public QWidget
 {
@@ -37,6 +40,10 @@ public slots:
     void clearLogs();
     void saveLogsToFile();
     void appendLogMessage(QtMsgType type, const QString &message, const QString &context = QString());
+    void appendLogSafe(const QString &message, int typeInt); // 线程安全的日志添加方法
+
+private slots:
+    void processPendingMessages(); // 处理待处理的消息
 
 private:
     void setupUI();
@@ -57,9 +64,10 @@ private:
     static ComposeDevTool* instance;
     static QMutex instanceMutex;
     
-    // 消息缓冲
+    // 消息缓冲（用于跨线程安全传递）
     QMutex logMutex;
     int maxLogLines;
+    QTimer *messageTimer; // 定时器用于处理消息
     
     // 原始消息处理器
     static QtMessageHandler originalHandler;

@@ -7,6 +7,14 @@
 #include <QTextCharFormat>
 #include <QFont>
 #include <QFontMetrics>
+#include <QThread>
+#include <QMetaObject>
+
+// 全局变量用于线程安全的消息传递
+static QMutex g_logMutex;
+static QStringList g_pendingMessages;
+static QList<QtMsgType> g_pendingTypes;
+static QStringList g_pendingContexts;
 
 // 静态成员初始化
 ComposeDevTool* ComposeDevTool::instance = nullptr;
@@ -19,6 +27,11 @@ ComposeDevTool::ComposeDevTool(QWidget *parent)
     setupUI();
     setupMessageHandler();
     
+    // 创建定时器来处理待处理的消息
+    messageTimer = new QTimer(this);
+    connect(messageTimer, &QTimer::timeout, this, &ComposeDevTool::processPendingMessages);
+    messageTimer->start(100); // 每100ms检查一次
+    
     // 设置窗口属性
     setWindowTitle("Compose Dev Tool - Debug Console");
     setWindowIcon(QIcon(":/icons/debug.png")); // 如果有图标的话
@@ -26,6 +39,9 @@ ComposeDevTool::ComposeDevTool(QWidget *parent)
     
     // 设置窗口标志，使其保持在最前面
     setWindowFlags(Qt::Window | Qt::WindowStaysOnTopHint);
+    
+    // 处理已存在的消息
+    processPendingMessages();
 }
 
 ComposeDevTool::~ComposeDevTool()
@@ -143,15 +159,29 @@ void ComposeDevTool::messageHandler(QtMsgType type, const QMessageLogContext &co
         originalHandler(type, context, msg);
     }
     
-    // 发送到我们的工具窗口
+    // 线程安全地存储消息
+    {
+        QMutexLocker locker(&g_logMutex);
+        g_pendingMessages << msg;
+        g_pendingTypes << type;
+        g_pendingContexts << QString("%1:%2").arg(context.file ? context.file : "Unknown").arg(context.line);
+    }
+    
+    // 如果实例存在，通过信号槽机制发送消息（线程安全）
     ComposeDevTool* tool = getInstance();
     if (tool) {
-        QString contextInfo = QString("%1:%2").arg(context.file ? context.file : "Unknown").arg(context.line);
-        QMetaObject::invokeMethod(tool, "appendLogMessage", Qt::QueuedConnection,
-                                Q_ARG(QtMsgType, type),
+        QMetaObject::invokeMethod(tool, "appendLogSafe", Qt::QueuedConnection,
                                 Q_ARG(QString, msg),
-                                Q_ARG(QString, contextInfo));
+                                Q_ARG(int, static_cast<int>(type)));
     }
+    
+    // 同时输出到标准输出（保持原有行为，特别是在Linux下）
+#ifdef Q_OS_UNIX
+    // 在Unix/Linux系统下，确保输出到stderr/stdout
+    FILE* output = (type == QtCriticalMsg || type == QtFatalMsg) ? stderr : stdout;
+    fprintf(output, "%s\n", msg.toLocal8Bit().constData());
+    fflush(output);
+#endif
 }
 
 QString ComposeDevTool::formatLogMessage(QtMsgType type, const QString &message, const QString &context)
@@ -189,10 +219,26 @@ QColor ComposeDevTool::getColorForMessageType(QtMsgType type)
 
 void ComposeDevTool::appendLogMessage(QtMsgType type, const QString &message, const QString &context)
 {
+    // 确保在主线程中执行
+    if (QThread::currentThread() != this->thread()) {
+        QMetaObject::invokeMethod(this, "appendLogSafe", 
+                                  Qt::QueuedConnection,
+                                  Q_ARG(QString, message),
+                                  Q_ARG(int, static_cast<int>(type)));
+        return;
+    }
+    
+    appendLogSafe(message, static_cast<int>(type));
+}
+
+void ComposeDevTool::appendLogSafe(const QString &message, int typeInt)
+{
+    QtMsgType type = static_cast<QtMsgType>(typeInt);
+    
     QMutexLocker locker(&logMutex);
     
     // 格式化消息
-    QString formattedMessage = formatLogMessage(type, message, context);
+    QString formattedMessage = formatLogMessage(type, message, "");
     
     // 获取对应颜色
     QColor color = getColorForMessageType(type);
@@ -224,6 +270,32 @@ void ComposeDevTool::appendLogMessage(QtMsgType type, const QString &message, co
     static int messageCount = 0;
     messageCount++;
     statusLabel->setText(QString("Debug Console - %1 messages").arg(messageCount));
+}
+
+void ComposeDevTool::processPendingMessages()
+{
+    QMutexLocker locker(&g_logMutex);
+    
+    if (g_pendingMessages.isEmpty()) {
+        return;
+    }
+    
+    // 处理所有待处理的消息
+    for (int i = 0; i < g_pendingMessages.size(); ++i) {
+        QString msg = g_pendingMessages.at(i);
+        QtMsgType type = g_pendingTypes.at(i);
+        QString context = g_pendingContexts.at(i);
+        
+        // 释放锁后调用 appendLogMessage
+        locker.unlock();
+        appendLogMessage(type, msg, context);
+        locker.relock();
+    }
+    
+    // 清空待处理列表
+    g_pendingMessages.clear();
+    g_pendingTypes.clear();
+    g_pendingContexts.clear();
 }
 
 void ComposeDevTool::clearLogs()
