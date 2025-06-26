@@ -250,14 +250,21 @@ bool RichTextEditorWidget::eventFilter(QObject *obj, QEvent *event)
     // 处理鼠标点击事件
     if (event->type() == QEvent::MouseButtonPress) {
         QMouseEvent *mouseEvent = static_cast<QMouseEvent*>(event);
-        
-        if (obj == textEdit->viewport() && mouseEvent->button() == Qt::LeftButton) {
+          if (obj == textEdit->viewport() && mouseEvent->button() == Qt::LeftButton) {
             QPoint viewportPos = mouseEvent->pos();
             
             // 检查是否点击了删除按钮
             for (const auto &tag : allTags) {
                 if (tag.deleteRect.contains(viewportPos)) {
                     deleteTagAtPosition(tag.position);
+                    return true; // 阻止事件传播
+                }
+            }
+            
+            // 检查是否点击了标签本身（但不是删除按钮）
+            for (const auto &tag : allTags) {
+                if (tag.rect.contains(viewportPos) && !tag.deleteRect.contains(viewportPos)) {
+                    handleTagClick(viewportPos);
                     return true; // 阻止事件传播
                 }
             }
@@ -279,7 +286,7 @@ bool RichTextEditorWidget::eventFilter(QObject *obj, QEvent *event)
             
             if (isOnDeleteButton) {
                 // 鼠标在删除按钮上，设置为箭头指针
-                textEdit->viewport()->setCursor(Qt::ArrowCursor);
+                textEdit->viewport()->setCursor(Qt::WaitCursor);
             } else if (isOnTag) {
                 // 鼠标在标签上，设置为手形指针
                 textEdit->viewport()->setCursor(Qt::PointingHandCursor);
@@ -381,28 +388,28 @@ bool RichTextEditorWidget::isPointOnDeleteButton(const QPoint &mousePos) const
 
 void RichTextEditorWidget::deleteTagAtPosition(int position)
 {
-    // 在文档中找到并删除对应的标签
-    QTextCursor cursor(textEdit->document());
+    QTextCursor cursor = textEdit->textCursor();
     cursor.setPosition(position);
     
-    // 查找标签对象
+    // 确保我们在正确的位置
     QTextCharFormat format = cursor.charFormat();
     if (format.objectType() == TagTextObject::TagTextFormat) {
-        // 删除标签字符
-        cursor.setPosition(position);
-        cursor.setPosition(position + 1, QTextCursor::KeepAnchor);
-        cursor.removeSelectedText();
-        
-        // 从标签列表中移除
-        for (int i = 0; i < allTags.size(); ++i) {
-            if (allTags[i].position == position) {
-                allTags.removeAt(i);
-                break;
-            }
-        }
-        
-        // 发送标签删除信号
+        cursor.deleteChar(); // 删除TagTextObject
         emit tagDeleted(position);
+        
+        // 清空并重新扫描标签
+        clearAllTags();
+        textEdit->viewport()->update();
+    } else {
+        // 如果当前位置不是标签，尝试向前查找
+        cursor.setPosition(position - 1);
+        format = cursor.charFormat();
+        if (format.objectType() ==  TagTextObject::TagTextFormat) {
+            cursor.deleteChar();
+            emit tagDeleted(position - 1);
+            clearAllTags();
+            textEdit->viewport()->update();
+        }
     }
 }
 
@@ -687,4 +694,16 @@ void RichTextEditorWidget::setBorderColor(const QColor &color)
 QColor RichTextEditorWidget::getBorderColor() const
 {
     return currentBorderColor;
+}
+
+void RichTextEditorWidget::handleTagClick(const QPoint &mousePos)
+{
+    // 查找被点击的标签
+    for (const auto &tag : allTags) {
+        if (tag.rect.contains(mousePos) && !tag.deleteRect.contains(mousePos)) {
+            // 发射标签点击信号
+            emit tagClicked(tag.text, tag.position);
+            break;
+        }
+    }
 }

@@ -4,12 +4,24 @@
 #include <QDebug>
 
 MainWindow::MainWindow(QWidget *parent)
-    : QMainWindow(parent)
+    
 {
     setupUI();
     setWindowTitle("Qt dsfa adsf asdf 演示");
     setMinimumSize(600, 400);
     resize(1200, 600);
+    
+    // 初始化开发工具
+    devTool = ComposeDevTool::getInstance();
+    
+    // 设置快捷键 Alt+]
+    devToolShortcut = new QShortcut(QKeySequence("Alt+]"), this);
+    connect(devToolShortcut, &QShortcut::activated, this, &MainWindow::toggleDevTool);
+    
+    // 输出一些测试信息
+    qDebug() << "MainWindow initialized successfully";
+    qInfo() << "Application started with debug tool enabled";
+    qWarning() << "This is a warning message for testing";
 }
 
 MainWindow::~MainWindow()
@@ -113,12 +125,17 @@ void MainWindow::setupUI()
     connect(exitButton, &QPushButton::clicked, QApplication::instance(), &QApplication::quit);
     connect(richTextEditor1, &RichTextEditorWidget::textChanged, this, &MainWindow::onEditor1TextChanged);
     connect(richTextEditor2, &RichTextEditorWidget::textChanged, this, &MainWindow::onEditor2TextChanged);
-    
-    // 连接新的textChangedFromLastTag信号
+      // 连接新的textChangedFromLastTag信号
     connect(richTextEditor1, &RichTextEditorWidget::textChangedFromLastTag, 
             this, &MainWindow::onEditor1TextChangedFromLastTag);
     connect(richTextEditor2, &RichTextEditorWidget::textChangedFromLastTag, 
             this, &MainWindow::onEditor2TextChangedFromLastTag);
+    
+    // 连接标签点击信号
+    connect(richTextEditor1, &RichTextEditorWidget::tagClicked, 
+            this, &MainWindow::onTagClicked);
+    connect(richTextEditor2, &RichTextEditorWidget::tagClicked, 
+            this, &MainWindow::onTagClicked);
     
     // 设置一些示例文本
     //richTextEditor1->setPlainText("欢迎使用富文本编辑器1！您可以输入文本，然后在文本后添加分号将其转换为人员标签；");
@@ -265,4 +282,61 @@ void MainWindow::changeThemeColor()
     QMessageBox::information(this, "主题色已更改", 
                            QString("新的主题色: %1\n\n现在鼠标悬停或点击文本框时边框会变成这个颜色！")
                            .arg(newColor.name()));
+}
+
+void MainWindow::onTagClicked(const QString &tagText, int position)
+{
+    // 查找触发此信号的编辑器
+    RichTextEditorWidget *senderEditor = qobject_cast<RichTextEditorWidget*>(sender());
+    QString editorName = "未知编辑器";
+    
+    if (senderEditor == richTextEditor1) {
+        editorName = "编辑器 1";
+    } else if (senderEditor == richTextEditor2) {
+        editorName = "编辑器 2";
+    }
+    
+    // 构建弹窗内容，显示TagInfo结构体的信息
+    QString messageContent = QString(
+        "标签详细信息:\n\n"
+        "📍 来源编辑器: %1\n"
+        "🏷️ 标签文本: \"%2\"\n"
+        "📍 文档位置: %3\n"
+        "📋 标签长度: %4 个字符\n\n"
+        "💡 这是点击标签时显示的TagInfo结构体内容！"
+    ).arg(editorName)
+     .arg(tagText)
+     .arg(position)
+     .arg(tagText.length());
+    
+    // 显示信息弹窗
+    QMessageBox msgBox(this);
+    msgBox.setWindowTitle("标签信息");
+    msgBox.setText(messageContent);
+    msgBox.setIcon(QMessageBox::Information);
+    msgBox.setStandardButtons(QMessageBox::Ok);
+    msgBox.setDefaultButton(QMessageBox::Ok);
+    
+    // 自定义按钮文本
+    msgBox.button(QMessageBox::Ok)->setText("确定");
+    
+    // 设置弹窗的最小宽度，确保内容完整显示
+    msgBox.setMinimumWidth(400);
+    
+    // 显示弹窗
+    msgBox.exec();
+    
+    // 在控制台也输出日志信息
+    qDebug() << QString("标签被点击 - 编辑器: %1, 文本: \"%2\", 位置: %3")
+                .arg(editorName)
+                .arg(tagText)
+                .arg(position);
+}
+
+void MainWindow::toggleDevTool()
+{
+    if (devTool) {
+        devTool->toggleVisibility();
+        qDebug() << "Dev tool visibility toggled";
+    }
 }

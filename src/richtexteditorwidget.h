@@ -76,6 +76,7 @@ signals:
     void textChanged();
     void tagInserted(const QString &tagText);
     void tagDeleted(int position);
+    void tagClicked(const QString &tagText, int position); // 新增：标签被点击的信号
     void textChangedFromLastTag(const QString &textFromLastTag); // 新增：从上一个tag到当前光标的文本内容
 
 protected:
@@ -112,10 +113,13 @@ private:
     QColor currentBorderColor;  // 当前边框颜色
     QString normalStyleSheet;   // 正常状态的样式表
     QString focusStyleSheet;    // 焦点状态的样式表
-    QPropertyAnimation *borderAnimation; // 边框颜色动画    // 私有方法
+    QPropertyAnimation *borderAnimation; // 边框颜色动画
+    
+    // 私有方法
     void updateStyleSheets();   // 更新样式表
     void animateBorderColor(const QColor &targetColor); // 动画边框颜色
     void updateBorderColor(); // 更新边框颜色（动画过程中调用）
+    void handleTagClick(const QPoint &mousePos); // 处理标签点击
 };
 
 #endif // RICHTEXTEDITORWIDGET_H

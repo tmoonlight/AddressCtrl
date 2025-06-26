@@ -52,6 +52,8 @@ set(SOURCES
     src/tagtextobject.h
     src/richtexteditorwidget.cpp
     src/richtexteditorwidget.h
+    src/composedevtool.cpp
+    src/composedevtool.h
 )
 
 # 创建可执行文件

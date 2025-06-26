@@ -18,8 +18,11 @@
 #include <QTextObjectInterface>
 #include <QStatusBar>
 #include <QMouseEvent>
+#include <QShortcut>
+#include <QKeySequence>
 #include "tagtextobject.h"
 #include "richtexteditorwidget.h"
+#include "composedevtool.h"
 
 QT_BEGIN_NAMESPACE
 class QWidget;
@@ -45,6 +48,8 @@ private slots:
     void testLineHeight(); // 新增：测试行高设置
     void triggerTagCreation(); // 新增：触发标签创建
     void triggerErrorTagCreation(); // 新增：触发错误标签创建
+    void onTagClicked(const QString &tagText, int position); // 新增：处理标签点击事件
+    void toggleDevTool(); // 新增：切换开发工具窗口显示
 
 private:
     void setupUI();    QWidget *centralWidget;
@@ -64,6 +69,10 @@ private:
     // 使用富文本编辑器控件
     RichTextEditorWidget *richTextEditor1;
     RichTextEditorWidget *richTextEditor2;
+    
+    // 开发工具相关
+    ComposeDevTool *devTool;
+    QShortcut *devToolShortcut;
 };
 
 #endif // MAINWINDOW_H
